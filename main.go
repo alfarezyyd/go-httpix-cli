@@ -6,9 +6,12 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/imroc/req/v3"
 )
 
 func main() {
+	req.DevMode()
+
 	p := tea.NewProgram(
 		tui.New(),
 		tea.WithAltScreen(),
