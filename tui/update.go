@@ -4,12 +4,15 @@ import (
 	"fmt"
 	"go-httpix-cli/config"
 	"go-httpix-cli/core"
+	"go-httpix-cli/tui/collection"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
+	"github.com/google/uuid"
 )
 
 // Update is the Elm-architecture update function.
@@ -23,6 +26,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleSpinnerTick(msg)
 	case responseMsg:
 		return m.handleResponse(msg)
+	case saveResultMsg:
+		if msg.err != nil {
+			m.ModalErrMsg = "failed to save: " + msg.err.Error()
+			m.ActiveModal = config.ModalSaveAs // buka lagi modal dengan error
+		}
+		return m, nil
 	case tea.KeyMsg:
 		return m.handleKey(msg)
 	}
@@ -74,7 +83,13 @@ func (m Model) handleResponse(msg responseMsg) (Model, tea.Cmd) {
 
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	k := m.Keys
-	fmt.Printf("KEY STRING: %q\n", msg.String())
+	if m.ActiveModal != config.ModalNone {
+		return m.handleModalKey(msg)
+	}
+	if m.CollectionOpen {
+		return m.handleCollectionKey(msg)
+	}
+	fmt.Printf("%q", msg.String())
 	switch {
 	case key.Matches(msg, k.Quit):
 		return m, tea.Quit
@@ -130,6 +145,29 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.History = nil
 		m.HistoryIdx = -1
 		return m, nil
+
+	case key.Matches(msg, k.OpenPanelCollection):
+
+		m.CollectionOpen = !m.CollectionOpen
+		if m.CollectionOpen {
+			m.Focused = config.PanelCollections
+		} else {
+			m.Focused = config.PanelURL
+		}
+		return m, nil
+
+	case key.Matches(msg, k.SaveRequest):
+		m.ActiveModal = config.ModalSaveAs
+		m.ModalInput.SetValue("")
+		m.ModalInput.Focus()
+		core.Logger.Println("enter ditekan, name:", msg.String())
+
+		return m, nil
+
+	case key.Matches(msg, k.OpenEnvPicker):
+		m.ActiveModal = config.ModalEnvPicker
+		m.ModalCursor = 0
+		return m, nil
 	}
 
 	return m.delegateKey(msg)
@@ -141,6 +179,7 @@ func (m Model) delegateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch m.Focused {
 	case config.PanelURL:
 		m.URLInput, cmd = m.URLInput.Update(msg)
+
 	case config.PanelBody:
 		switch m.BodyTabI {
 		case config.TabBody:
@@ -258,14 +297,344 @@ func renderResponseBody(m Model) string {
 	return m.Response.Body
 }
 
-// ── Misc helpers ─────────────────────────────────────────────
-
-func max(a, b int) int {
-	if a > b {
-		return a
+func (m Model) handleModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch m.ActiveModal {
+	case config.ModalSaveAs:
+		return m.handleSaveAsKey(msg)
+	case config.ModalEnvPicker:
+		return m.handleEnvPickerKey(msg)
+	case config.ModalNewFolder: // ← tambah
+		return m.handleNewFolderKey(msg)
+	case config.ModalRename: // ← tambah
+		return m.handleRenameKey(msg)
 	}
-	return b
+	return m, nil
 }
+
+func (m Model) handleSaveAsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.ActiveModal = config.ModalNone
+		m.ModalInput.Blur()
+		return m, nil
+
+	case "enter":
+		name := strings.TrimSpace(m.ModalInput.Value())
+		if name == "" {
+			m.ModalErrMsg = "collection name cannot be empty"
+			return m, nil // tidak tutup modal, tampilkan error
+		}
+
+		if m.URLInput.Value() == "" {
+			m.ModalErrMsg = "url input cannot be empty"
+			return m, nil // tidak tutup modal, tampilkan error
+		}
+		m.ActiveModal = config.ModalNone
+		m.ModalErrMsg = ""
+		m.ModalInput.Blur()
+		return m, saveRequestCmd(m, name)
+
+	default:
+		// clear error saat user mulai mengetik lagi
+		m.ModalErrMsg = ""
+		var cmd tea.Cmd
+		m.ModalInput, cmd = m.ModalInput.Update(msg)
+		return m, cmd
+	}
+}
+
+func (m Model) handleEnvPickerKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.ActiveModal = config.ModalNone
+		return m, nil
+
+	case "enter":
+		// set env aktif sesuai m.ModalCursor
+		if len(m.Envs) == 0 {
+			m.ModalErrMsg = "Environment variables is empty, can't pick"
+			return m, nil
+		}
+		selected := m.Envs[m.ModalCursor] // ambil value dulu
+
+		m.ActiveEnv = &selected // baru ambil alamatnya
+		m.ActiveEnvIdx = m.ModalCursor
+		m.ActiveModal = config.ModalNone
+
+		return m, nil
+
+	case "up", "k":
+		if m.ModalCursor > 0 {
+			m.ModalCursor--
+		}
+		return m, nil
+
+	case "down", "j":
+		if m.ModalCursor < len(m.ModalList)-1 {
+			m.ModalCursor++
+		}
+		return m, nil
+	}
+	return m, nil
+}
+
+func saveRequestCmd(m Model, collectionName string) tea.Cmd {
+	return func() tea.Msg {
+
+		return saveResultMsg{err: nil}
+	}
+}
+
+// ── Misc helpers ─────────────────────────────────────────────
 
 // keep glamour import alive (only used via newRenderer in init.go)
 var _ = glamour.NewTermRenderer
+
+// update.go — handler khusus collection panel
+
+func (m Model) handleCollectionKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	k := m.Keys
+	switch msg.String() {
+	case "up", "k":
+		if m.CollectionCursor > 0 {
+			m.CollectionCursor--
+		}
+
+	case "down", "j":
+		if m.CollectionCursor < len(m.CollectionTree)-1 {
+			m.CollectionCursor++
+		}
+
+	case "enter", " ":
+		node := m.CollectionTree[m.CollectionCursor]
+		if node.IsFolder {
+			// toggle expand/collapse
+			m = m.toggleExpand(m.CollectionCursor)
+		} else {
+			// load request ke form
+			m = m.loadRequest(node.Data)
+			m.CollectionOpen = false // tutup panel, fokus ke form
+		}
+
+	case "n":
+		// buka modal → new request di dalam collection ini
+		m.ActiveModal = config.ModalSaveAs
+
+	case "N":
+		// buka modal new folder
+		m.ActiveModal = config.ModalNewFolder
+		m.ModalInput = newModalInput()
+		m.ModalInput.Placeholder = "e.g. Auth"
+		m.ModalInput.Focus()
+		return m, nil
+
+	case "d":
+		// hapus node yang dipilih
+		m = m.deleteNode(m.CollectionCursor)
+
+	case "r":
+		// buka modal rename — isi input dengan nama lama
+		if len(m.CollectionTree) == 0 {
+			return m, nil
+		}
+		node := m.CollectionTree[m.CollectionCursor]
+		m.ActiveModal = config.ModalRename
+		m.RenameTargetID = node.ID
+		m.ModalInput = newModalInput()
+		m.ModalInput.SetValue(node.Name) // pre-fill nama lama
+		m.ModalInput.Focus()
+		return m, nil
+	}
+
+	switch {
+	case key.Matches(msg, k.OpenPanelCollection):
+		m.CollectionOpen = false
+		m.Focused = config.PanelURL
+	}
+
+	return m, nil
+}
+
+func (m Model) toggleExpand(cursor int) Model {
+	// cari collection di nested structure berdasarkan ID
+	// toggle Expanded-nya
+	// rebuild CollectionTree dengan Flatten()
+	node := m.CollectionTree[cursor]
+	m.Collections = toggleInTree(m.Collections, node.ID)
+	m.CollectionTree = collection.Flatten(m.Collections)
+	return m
+}
+
+func (m Model) loadRequest(req *collection.Request) Model {
+	for i, meth := range config.HTTPMethods {
+		if meth == req.Method {
+			m.MethodIdx = i
+			break
+		}
+	}
+	m.URLInput.SetValue(req.URL)
+	m.HeadersInput.SetValue(req.Headers)
+	m.BodyInput.SetValue(req.Body)
+	m.ParamsInput.SetValue(req.Params)
+	return m
+}
+
+func (m Model) deleteNode(cursor int) Model {
+	if len(m.CollectionTree) == 0 {
+		return m
+	}
+	node := m.CollectionTree[cursor]
+	m.Collections = deleteFromTree(m.Collections, node.ID)
+	m.CollectionTree = collection.Flatten(m.Collections)
+
+	// jaga cursor tetap dalam batas
+	if m.CollectionCursor >= len(m.CollectionTree) {
+		m.CollectionCursor = len(m.CollectionTree) - 1
+	}
+	if m.CollectionCursor < 0 {
+		m.CollectionCursor = 0
+	}
+	return m
+}
+
+func deleteFromTree(collections []collection.Collection, id string) []collection.Collection {
+	result := []collection.Collection{}
+	for _, c := range collections {
+		if c.ID == id {
+			continue // skip — ini yang dihapus
+		}
+		// cek juga di children dan requests
+		c.Children = deleteFromTree(c.Children, id)
+		c.Requests = deleteRequestFromList(c.Requests, id)
+		result = append(result, c)
+	}
+	return result
+}
+
+func deleteRequestFromList(requests []collection.Request, id string) []collection.Request {
+	result := []collection.Request{}
+	for _, r := range requests {
+		if r.ID != id {
+			result = append(result, r)
+		}
+	}
+	return result
+}
+
+func toggleInTree(collections []collection.Collection, id string) []collection.Collection {
+	for i, c := range collections {
+		if c.ID == id {
+			collections[i].Expanded = !collections[i].Expanded
+			return collections
+		}
+		// cari di children secara rekursif
+		collections[i].Children = toggleInTree(c.Children, id)
+	}
+	return collections
+}
+
+func (m Model) handleNewFolderKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	fmt.Printf("%q", msg.String())
+
+	switch msg.String() {
+	case "esc":
+		m.ActiveModal = config.ModalNone
+		m.ModalErrMsg = ""
+		m.ModalInput.Blur()
+		return m, nil
+
+	case "enter":
+		name := strings.TrimSpace(m.ModalInput.Value())
+		if name == "" {
+			m.ModalErrMsg = "folder name cannot be empty"
+			return m, nil
+		}
+
+		// buat collection baru sebagai root folder
+		newFolder := collection.Collection{
+			ID:       uuid.New().String(),
+			Name:     name,
+			Children: []collection.Collection{},
+			Requests: []collection.Request{},
+			Expanded: false,
+		}
+
+		m.Collections = append(m.Collections, newFolder)
+		m.CollectionTree = collection.Flatten(m.Collections)
+		m.ActiveModal = config.ModalNone
+		m.ModalErrMsg = ""
+		m.ModalInput.SetValue("")
+		m.ModalInput.Blur()
+		return m, saveCollectionsCmd(m.Collections)
+
+	default:
+		tea.Println("enter ditekan, name:", msg.String())
+		m.ModalErrMsg = ""
+		var cmd tea.Cmd
+		m.ModalInput, cmd = m.ModalInput.Update(msg)
+		core.Logger.Println(msg)
+		return m, cmd
+	}
+
+}
+
+func (m Model) handleRenameKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.ActiveModal = config.ModalNone
+		m.ModalErrMsg = ""
+		m.RenameTargetID = ""
+		m.ModalInput.Blur()
+		return m, nil
+
+	case "enter":
+		name := strings.TrimSpace(m.ModalInput.Value())
+		if name == "" {
+			m.ModalErrMsg = "name cannot be empty"
+			return m, nil
+		}
+
+		m.Collections = renameInTree(m.Collections, m.RenameTargetID, name)
+		m.CollectionTree = collection.Flatten(m.Collections)
+		m.ActiveModal = config.ModalNone
+		m.ModalErrMsg = ""
+		m.RenameTargetID = ""
+		m.ModalInput.SetValue("")
+		m.ModalInput.Blur()
+		return m, saveCollectionsCmd(m.Collections)
+
+	default:
+		m.ModalErrMsg = ""
+		var cmd tea.Cmd
+		m.ModalInput, cmd = m.ModalInput.Update(msg)
+		return m, cmd
+	}
+}
+
+// renameInTree mencari node dengan ID tertentu lalu mengubah namanya
+func renameInTree(collections []collection.Collection, id, newName string) []collection.Collection {
+	for i, c := range collections {
+		if c.ID == id {
+			collections[i].Name = newName
+			return collections
+		}
+		// cari di request
+		for j, r := range c.Requests {
+			if r.ID == id {
+				collections[i].Requests[j].Name = newName
+				return collections
+			}
+		}
+		// rekursif ke children
+		collections[i].Children = renameInTree(c.Children, id, newName)
+	}
+	return collections
+}
+
+func saveCollectionsCmd(collections []collection.Collection) tea.Cmd {
+	return func() tea.Msg {
+		return saveResultMsg{
+			err: nil,
+		}
+	}
+}

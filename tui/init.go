@@ -2,6 +2,8 @@ package tui
 
 import (
 	"go-httpix-cli/config"
+	"go-httpix-cli/entity"
+	"go-httpix-cli/tui/collection"
 	"runtime"
 	"time"
 
@@ -16,19 +18,52 @@ import (
 
 func New() tea.Model {
 	return Model{
+		// Request inputs
 		MethodIdx:    0,
 		URLInput:     newURLInput(),
 		BodyInput:    newBodyInput(),
 		HeadersInput: newHeadersInput(),
 		ParamsInput:  newParamsInput(),
-		Focused:      config.PanelURL,
-		BodyTabI:     config.TabBody,
-		ResponseVP:   viewport.New(80, 20),
-		Spinner:      newSpinner(),
-		Renderer:     newRenderer(80),
-		Keys:         config.DefaultKeyMap(),
-		IsMac:        runtime.GOOS == "darwin",
-		HistoryIdx:   -1,
+
+		// Focus
+		Focused:  config.PanelURL,
+		BodyTabI: config.TabBody,
+
+		// Response
+		ResponseVP: viewport.New(80, 20),
+		Spinner:    newSpinner(),
+		Renderer:   newRenderer(80),
+		ErrMsg:     "",
+		Loading:    false,
+		Response:   nil,
+
+		// History
+		HistoryIdx: -1,
+
+		// Cross-cutting
+		Keys:  config.DefaultKeyMap(),
+		IsMac: runtime.GOOS == "darwin",
+		Tick:  0,
+
+		// Modal
+		ActiveModal: config.ModalNone,
+		ModalInput:  newModalInput(),
+		ModalList:   []string{},
+		ModalCursor: 0,
+
+		// Collections
+		CollectionNames: []string{},
+
+		// Environment
+		Envs:         []entity.Env{},
+		EnvNames:     []string{},
+		ActiveEnv:    nil, // pointer, nil = belum ada env dipilih
+		ActiveEnvIdx: -1,
+
+		CollectionOpen:   false,
+		Collections:      []collection.Collection{},
+		CollectionTree:   []collection.TreeNode{},
+		CollectionCursor: 0,
 	}
 }
 
@@ -102,4 +137,12 @@ func newRenderer(wordWrap int) *glamour.TermRenderer {
 		glamour.WithWordWrap(wordWrap),
 	)
 	return r
+}
+
+func newModalInput() textinput.Model {
+	ti := textinput.New()
+	ti.Placeholder = "e.g. my-collection"
+	ti.CharLimit = 64
+	ti.Width = 34
+	return ti
 }

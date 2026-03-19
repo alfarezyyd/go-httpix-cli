@@ -5,6 +5,8 @@ package tui
 import (
 	"go-httpix-cli/config"
 	"go-httpix-cli/core"
+	"go-httpix-cli/entity"
+	"go-httpix-cli/tui/collection"
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -30,6 +32,10 @@ type tickMsg time.Time
 type responseMsg struct {
 	resp *core.Response
 	err  error
+}
+
+type saveResultMsg struct {
+	err error
 }
 
 // Model holds all application state. It is value-copied on every Update.
@@ -63,4 +69,27 @@ type Model struct {
 	Keys     config.KeyMap
 	IsMac    bool
 	Tick     int
+
+	// Modal
+	ActiveModal config.ModalType
+	ModalInput  textinput.Model // input nama di modal SaveAs
+	ModalList   []string        // list pilihan di modal EnvPicker
+	ModalCursor int             // posisi kursor di list
+	ModalErrMsg string
+
+	CollectionNames []string // nama semua collection yang tersimpan di disk
+
+	// ── Environment Variables ────────────────────────────────
+	Envs         []entity.Env // semua env yang tersimpan
+	EnvNames     []string     // nama env untuk ditampilkan di modal (derived dari Envs)
+	ActiveEnv    *entity.Env  // env yang sedang aktif, nil = tidak ada
+	ActiveEnvIdx int
+
+	CollectionOpen   bool                    // panel terbuka atau tidak
+	Collections      []collection.Collection // semua root collection
+	CollectionTree   []collection.TreeNode   // flat list dari tree yang sudah di-expand
+	CollectionCursor int                     // posisi cursor di tree
+
+	// Rename — menyimpan ID node yang sedang di-rename
+	RenameTargetID string
 }

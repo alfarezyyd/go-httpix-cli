@@ -53,6 +53,16 @@ func (m Model) responsePanelProps(w int) component.ResponsePanelProps {
 	}
 }
 
+func (m Model) collectionPanelProps(w int) component.CollectionPanelProps {
+	return component.CollectionPanelProps{
+		Width:   w,
+		Height:  m.Height,
+		Focused: m.Focused == config.PanelCollections,
+		Nodes:   m.CollectionTree,
+		Cursor:  m.CollectionCursor,
+	}
+}
+
 func (m Model) sidebarProps() component.SidebarProps {
 	entries := make([]component.HistoryRow, len(m.History))
 	for i, h := range m.History {

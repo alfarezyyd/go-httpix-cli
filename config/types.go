@@ -2,12 +2,14 @@ package config
 
 // Panel identifies which UI region currently has keyboard focus.
 type Panel int
+type ModalType int
 
 const (
 	PanelURL Panel = iota
 	PanelBody
 	PanelResponse
 	PanelHistory
+	PanelCollections
 )
 
 // BodyTab is the active sub-tab inside the request editor.
@@ -21,3 +23,11 @@ const (
 
 // HTTPMethods is the ordered list of selectable HTTP verbs.
 var HTTPMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
+
+const (
+	ModalNone ModalType = iota
+	ModalSaveAs
+	ModalEnvPicker
+	ModalNewFolder
+	ModalRename
+)
