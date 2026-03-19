@@ -1,35 +1,33 @@
-package collection
+package core
 
 import (
 	"encoding/json"
 	"fmt"
+	"go-httpix-cli/tui/collection"
 	"os"
 	"path/filepath"
 )
 
 func baseDir() (string, error) {
-	home, err := os.UserHomeDir()
+	home, err := os.Getwd()
 	if err != nil {
 		return "", err
 	}
-	dir := filepath.Join(home, ".config", "blink", "collections")
+	dir := filepath.Join(home, "collections")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return "", err
 	}
 	return dir, nil
 }
 
-// Save menyimpan collection ke disk.
-func Save(name string, data Collection) error {
+func SaveFile(collectionName string, collection collection.Collection) error {
 	dir, err := baseDir()
 	if err != nil {
-		return fmt.Errorf("base dir: %w", err)
+		return err
 	}
-
-	path := filepath.Join(dir, name+".json")
+	path := filepath.Join(dir, collectionName+".json")
 	tmpPath := path + ".tmp"
-
-	bytes, err := json.MarshalIndent(data, "", "  ")
+	bytes, err := json.MarshalIndent(collection, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal: %w", err)
 	}

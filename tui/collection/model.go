@@ -5,7 +5,7 @@ type Collection struct {
 	Name     string       `json:"name"`
 	Children []Collection `json:"children"` // rekursif
 	Requests []Request    `json:"requests"`
-	Expanded bool         `json:"expanded"`
+	Expanded bool         `json:"-"`
 }
 
 type Request struct {

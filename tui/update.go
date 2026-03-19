@@ -565,7 +565,7 @@ func (m Model) handleNewFolderKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.ModalErrMsg = ""
 		m.ModalInput.SetValue("")
 		m.ModalInput.Blur()
-		return m, saveCollectionsCmd(m.Collections)
+		return m, saveCollectionsCmd(newFolder)
 
 	default:
 		tea.Println("enter ditekan, name:", msg.String())
@@ -597,11 +597,13 @@ func (m Model) handleRenameKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.Collections = renameInTree(m.Collections, m.RenameTargetID, name)
 		m.CollectionTree = collection.Flatten(m.Collections)
 		m.ActiveModal = config.ModalNone
+		root := findRootCollection(m.Collections, m.RenameTargetID)
+
 		m.ModalErrMsg = ""
 		m.RenameTargetID = ""
 		m.ModalInput.SetValue("")
 		m.ModalInput.Blur()
-		return m, saveCollectionsCmd(m.Collections)
+		return m, saveCollectionsCmd(root)
 
 	default:
 		m.ModalErrMsg = ""
@@ -631,10 +633,39 @@ func renameInTree(collections []collection.Collection, id, newName string) []col
 	return collections
 }
 
-func saveCollectionsCmd(collections []collection.Collection) tea.Cmd {
+func saveCollectionsCmd(collectionEntity collection.Collection) tea.Cmd {
 	return func() tea.Msg {
+		err := core.SaveFile(collectionEntity.Name, collectionEntity)
 		return saveResultMsg{
-			err: nil,
+			err: err,
 		}
 	}
+}
+
+// findRootCollection mencari root collection mana yang mengandung ID tersebut
+func findRootCollection(collections []collection.Collection, id string) collection.Collection {
+	for i, c := range collections {
+		if containsID(c, id) {
+			return collections[i]
+		}
+	}
+	return collection.Collection{}
+}
+
+// containsID cek apakah collection ini atau anaknya mengandung ID
+func containsID(c collection.Collection, id string) bool {
+	if c.ID == id {
+		return true
+	}
+	for _, r := range c.Requests {
+		if r.ID == id {
+			return true
+		}
+	}
+	for _, child := range c.Children {
+		if containsID(child, id) {
+			return true
+		}
+	}
+	return false
 }
