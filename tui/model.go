@@ -7,6 +7,7 @@ import (
 	"go-httpix-cli/core"
 	"go-httpix-cli/entity"
 	"go-httpix-cli/tui/collection"
+	"go-httpix-cli/tui/component"
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -92,4 +93,23 @@ type Model struct {
 
 	// Rename — menyimpan ID node yang sedang di-rename
 	RenameTargetID string
+
+	// Page navigation
+	CurrentPage config.Page
+
+	// Env page state
+	EnvPageList      []entity.Env         // sama dengan m.Envs
+	EnvPageCursor    int                  // cursor di list kiri
+	EnvPageFocus     EnvPageFocus         // panel mana yang aktif (list atau table)
+	EnvPageRows      []entity.EnvTableRow // rows yang sedang diedit di panel kanan
+	EnvPageRowCursor int                  // cursor di table
+	EnvPageEditing   bool                 // sedang edit cell atau tidak
+	EnvPageProps     component.EnvPageProps
 }
+
+type EnvPageFocus int
+
+const (
+	EnvFocusList  EnvPageFocus = iota // fokus di panel kiri
+	EnvFocusTable                     // fokus di panel kanan
+)

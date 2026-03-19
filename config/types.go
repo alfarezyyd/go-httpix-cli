@@ -3,6 +3,12 @@ package config
 // Panel identifies which UI region currently has keyboard focus.
 type Panel int
 type ModalType int
+type Page int
+
+const (
+	PageMain Page = iota
+	PageEnv       // ← full page env manager
+)
 
 const (
 	PanelURL Panel = iota

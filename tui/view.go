@@ -32,10 +32,15 @@ func (m Model) View() string {
 		)
 	}
 
-	if m.CollectionOpen {
-		return m.viewWithCollections()
+	switch m.CurrentPage {
+	case config.PageEnv:
+		return component.EnvPage(m.envPageProps())
+	default:
+		// halaman utama seperti biasa
+		if m.CollectionOpen {
+			return m.viewWithCollections()
+		}
 	}
-
 	return base
 }
 

@@ -24,6 +24,7 @@ type KeyMap struct {
 	SaveRequest         key.Binding
 	OpenEnvPicker       key.Binding
 	OpenPanelCollection key.Binding
+	OpenEnvPage         key.Binding
 
 	// Human-readable labels shown in the status bar / top bar.
 	LabelSend         string
@@ -69,6 +70,7 @@ func macKeyMap() KeyMap {
 		SaveRequest:         key.NewBinding(key.WithKeys("alt+ctrl+s"), key.WithHelp("⌥⌃S", "save request")),
 		OpenEnvPicker:       key.NewBinding(key.WithKeys("ctrl+x"), key.WithHelp("⌃X", "open env picker")),
 		OpenPanelCollection: key.NewBinding(key.WithKeys("ctrl+a"), key.WithHelp("⌃A", "open panel collections")),
+		OpenEnvPage:         key.NewBinding(key.WithKeys("alt+ctrl+k"), key.WithHelp("⌥⌃[", "open env page")),
 		LabelSend:           "⌃S / F5", LabelFocus: "⇥ Tab", LabelMethod: "⌥ ←/→",
 		LabelTab: "⌥ [/]", LabelFormatJSON: "⌃F", LabelQuit: "⌃C", LabelClearHistory: "⌃K",
 	}

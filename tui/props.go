@@ -95,3 +95,42 @@ func (m Model) statusBarProps() component.StatusBarProps {
 		Keys:       m.Keys,
 	}
 }
+
+// tui/props.go
+
+func (m Model) envPageProps() component.EnvPageProps {
+	envNames := make([]string, len(m.EnvPageList))
+	for i, e := range m.EnvPageList {
+		envNames[i] = e.Name
+	}
+
+	rows := make([]component.EnvRow, len(m.EnvPageRows))
+	for i, r := range m.EnvPageRows {
+		rows[i] = component.EnvRow{
+			KeyView:   r.Key.View(),
+			ValueView: r.Value.View(),
+			KeyVal:    r.Key.Value(),
+			ValueVal:  r.Value.Value(),
+			Editing:   m.EnvPageEditing && i == m.EnvPageRowCursor,
+		}
+	}
+
+	envName := ""
+	if m.EnvPageCursor >= 0 && m.EnvPageCursor < len(m.EnvPageList) {
+		envName = m.EnvPageList[m.EnvPageCursor].Name
+	}
+
+	return component.EnvPageProps{
+		Width:        m.Width,
+		Height:       m.Height,
+		Envs:         envNames,
+		ListCursor:   m.EnvPageCursor,
+		ActiveIdx:    m.ActiveEnvIdx,
+		ListFocused:  m.EnvPageFocus == EnvFocusList,
+		EnvName:      envName,
+		Rows:         rows,
+		RowCursor:    m.EnvPageRowCursor,
+		TableFocused: m.EnvPageFocus == EnvFocusTable,
+		Editing:      m.EnvPageEditing,
+	}
+}

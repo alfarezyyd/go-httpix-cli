@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"go-httpix-cli/config"
 	"go-httpix-cli/core"
+	"go-httpix-cli/entity"
 	"go-httpix-cli/tui/collection"
 	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 	"github.com/google/uuid"
@@ -83,6 +85,9 @@ func (m Model) handleResponse(msg responseMsg) (Model, tea.Cmd) {
 
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	k := m.Keys
+	if m.CurrentPage == config.PageEnv {
+		return m.handleEnvPageKey(msg)
+	}
 	if m.ActiveModal != config.ModalNone {
 		return m.handleModalKey(msg)
 	}
@@ -167,6 +172,19 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, k.OpenEnvPicker):
 		m.ActiveModal = config.ModalEnvPicker
 		m.ModalCursor = 0
+		return m, nil
+
+	case key.Matches(msg, k.OpenEnvPage):
+		m.CurrentPage = config.PageEnv
+		m.EnvPageList = m.Envs
+		m.EnvPageCursor = 0
+		m.EnvPageFocus = EnvFocusList
+		m.EnvPageRows = []entity.EnvTableRow{}
+		m.EnvPageRowCursor = 0
+		// load rows env pertama kalau ada
+		if len(m.Envs) > 0 {
+			m.EnvPageRows = envToTableRows(m.Envs[0])
+		}
 		return m, nil
 	}
 
@@ -668,4 +686,230 @@ func containsID(c collection.Collection, id string) bool {
 		}
 	}
 	return false
+}
+
+func (m Model) handleEnvPageKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// kalau sedang edit cell, tangkap semua input
+	if m.EnvPageEditing {
+		return m.handleEnvCellEdit(msg)
+	}
+
+	switch m.EnvPageFocus {
+	case EnvFocusList:
+		return m.handleEnvListPanel(msg)
+	case EnvFocusTable:
+		return m.handleEnvTablePanel(msg)
+	}
+	return m, nil
+}
+
+func (m Model) handleEnvListPanel(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.CurrentPage = config.PageMain
+		return m, nil
+
+	case "tab":
+		// pindah ke panel kanan
+		m.EnvPageFocus = EnvFocusTable
+		return m, nil
+
+	case "up", "k":
+		if m.EnvPageCursor > 0 {
+			m.EnvPageCursor--
+			m.EnvPageRows = envToTableRows(m.EnvPageList[m.EnvPageCursor])
+			m.EnvPageRowCursor = 0
+		}
+		return m, nil
+
+	case "down", "j":
+		if m.EnvPageCursor < len(m.EnvPageList)-1 {
+			m.EnvPageCursor++
+			m.EnvPageRows = envToTableRows(m.EnvPageList[m.EnvPageCursor])
+			m.EnvPageRowCursor = 0
+		}
+		return m, nil
+
+	case "enter":
+		// set sebagai env aktif
+		selected := m.EnvPageList[m.EnvPageCursor]
+		m.ActiveEnv = &selected
+		m.ActiveEnvIdx = m.EnvPageCursor
+		return m, nil
+
+	case "n":
+		// tambah env baru
+		newEnv := entity.Env{
+			Name: "new environment",
+			Vars: map[string]string{},
+		}
+		m.EnvPageList = append(m.EnvPageList, newEnv)
+		m.EnvPageCursor = len(m.EnvPageList) - 1
+		m.EnvPageRows = []entity.EnvTableRow{newEnvTableRow()}
+		m.EnvPageFocus = EnvFocusTable // langsung pindah ke tabel
+		return m, nil
+
+	case "d":
+		// hapus env yang dipilih
+		if len(m.EnvPageList) == 0 {
+			return m, nil
+		}
+		m.EnvPageList = append(
+			m.EnvPageList[:m.EnvPageCursor],
+			m.EnvPageList[m.EnvPageCursor+1:]...,
+		)
+		if m.EnvPageCursor >= len(m.EnvPageList) {
+			m.EnvPageCursor = len(m.EnvPageList) - 1
+		}
+		if m.EnvPageCursor >= 0 {
+			m.EnvPageRows = envToTableRows(m.EnvPageList[m.EnvPageCursor])
+		} else {
+			m.EnvPageRows = []entity.EnvTableRow{}
+		}
+		return m, saveEnvsCmd(m.EnvPageList)
+	}
+	return m, nil
+}
+
+func (m Model) handleEnvTablePanel(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc", "tab":
+		// kembali ke list
+		m.EnvPageFocus = EnvFocusList
+		return m, nil
+
+	case "up", "k":
+		if m.EnvPageRowCursor > 0 {
+			m.EnvPageRowCursor--
+		}
+		return m, nil
+
+	case "down", "j":
+		if m.EnvPageRowCursor < len(m.EnvPageRows)-1 {
+			m.EnvPageRowCursor++
+		}
+		return m, nil
+
+	case "enter":
+		// mulai edit row yang dipilih
+		m.EnvPageEditing = true
+		m.EnvPageRows[m.EnvPageRowCursor].Key.Focus()
+		return m, nil
+
+	case "n":
+		// tambah row baru
+		m.EnvPageRows = append(m.EnvPageRows, newEnvTableRow())
+		m.EnvPageRowCursor = len(m.EnvPageRows) - 1
+		m.EnvPageEditing = true
+		m.EnvPageRows[m.EnvPageRowCursor].Key.Focus()
+		return m, nil
+
+	case "d":
+		// hapus row
+		if len(m.EnvPageRows) == 0 {
+			return m, nil
+		}
+		m.EnvPageRows = append(
+			m.EnvPageRows[:m.EnvPageRowCursor],
+			m.EnvPageRows[m.EnvPageRowCursor+1:]...,
+		)
+		if m.EnvPageRowCursor >= len(m.EnvPageRows) {
+			m.EnvPageRowCursor = len(m.EnvPageRows) - 1
+		}
+		return m, m.saveCurrentEnv()
+	}
+	return m, nil
+}
+
+func (m Model) handleEnvCellEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	row := &m.EnvPageRows[m.EnvPageRowCursor]
+
+	switch msg.String() {
+	case "tab":
+		// pindah dari key ke value atau selesai edit
+		if row.Key.Focused() {
+			row.Key.Blur()
+			row.Value.Focus()
+		} else {
+			row.Value.Blur()
+			m.EnvPageEditing = false
+			return m, m.saveCurrentEnv()
+		}
+		return m, nil
+
+	case "esc":
+		row.Key.Blur()
+		row.Value.Blur()
+		m.EnvPageEditing = false
+		return m, m.saveCurrentEnv()
+
+	case "enter":
+		row.Key.Blur()
+		row.Value.Blur()
+		m.EnvPageEditing = false
+		return m, m.saveCurrentEnv()
+	}
+
+	// teruskan ke input yang aktif
+	var cmd tea.Cmd
+	if row.Key.Focused() {
+		m.EnvPageRows[m.EnvPageRowCursor].Key, cmd = row.Key.Update(msg)
+	} else {
+		m.EnvPageRows[m.EnvPageRowCursor].Value, cmd = row.Value.Update(msg)
+	}
+	return m, cmd
+}
+
+func envToTableRows(e entity.Env) []entity.EnvTableRow {
+	rows := make([]entity.EnvTableRow, 0, len(e.Vars))
+	for k, v := range e.Vars {
+		row := newEnvTableRow()
+		row.Key.SetValue(k)
+		row.Value.SetValue(v)
+		rows = append(rows, row)
+	}
+	return rows
+}
+
+func newEnvTableRow() entity.EnvTableRow {
+	k := textinput.New()
+	k.Placeholder = "KEY"
+	k.Width = 20
+
+	v := textinput.New()
+	v.Placeholder = "value"
+	v.Width = 30
+
+	return entity.EnvTableRow{Key: k, Value: v}
+}
+
+func tableRowsToEnv(name string, rows []entity.EnvTableRow) entity.Env {
+	vars := make(map[string]string, len(rows))
+	for _, row := range rows {
+		k := strings.TrimSpace(row.Key.Value())
+		v := strings.TrimSpace(row.Value.Value())
+		if k != "" {
+			vars[k] = v
+		}
+	}
+	return entity.Env{Name: name, Vars: vars}
+}
+
+// saveCurrentEnv menyimpan env yang sedang diedit
+func (m Model) saveCurrentEnv() tea.Cmd {
+	if m.EnvPageCursor < 0 || m.EnvPageCursor >= len(m.EnvPageList) {
+		return nil
+	}
+	name := m.EnvPageList[m.EnvPageCursor].Name
+	updated := tableRowsToEnv(name, m.EnvPageRows)
+	m.EnvPageList[m.EnvPageCursor] = updated
+	m.Envs = m.EnvPageList // sync ke model utama
+	return saveEnvsCmd(m.EnvPageList)
+}
+
+func saveEnvsCmd(envPageList []entity.Env) tea.Cmd {
+	return func() tea.Msg {
+
+		return saveResultMsg{err: nil}
+	}
 }
