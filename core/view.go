@@ -61,8 +61,11 @@ func RenderModal(coreModel Model) string {
 	switch coreModel.Modal.Active {
 	case config.ModalSaveAs:
 		return component.SaveAsModal(props.SaveAsModalProps{
-			Input:  coreModel.Modal.Input,
-			ErrMsg: coreModel.Modal.ErrMsg,
+			Input:      coreModel.Modal.SaveAsNameInput,
+			Tree:       coreModel.CollectionTree,
+			Cursor:     coreModel.Modal.Cursor,
+			SelectedID: coreModel.Modal.SaveAsSelectedID,
+			ErrMsg:     coreModel.Modal.ErrMsg,
 		})
 
 	case config.ModalNewFolder:

@@ -82,6 +82,10 @@ type ModalState struct {
 	Cursor   int
 	ErrMsg   string
 	RenameID string // ID node yang sedang di-rename
+
+	SaveAsNameInput    textinput.Model // input nama request
+	SaveAsSelectedID   string          // ID folder tujuan, "" = root
+	SaveAsInputFocused bool
 }
 
 // EnvPageState menyimpan semua state halaman env manager.

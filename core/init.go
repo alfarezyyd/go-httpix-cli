@@ -3,6 +3,7 @@ package core
 import (
 	"go-httpix-cli/config"
 	"go-httpix-cli/entity"
+	"go-httpix-cli/outbound"
 	"go-httpix-cli/utils"
 	"runtime"
 	"time"
@@ -13,6 +14,7 @@ import (
 )
 
 func New() tea.Model {
+
 	return Model{
 		// Request inputs
 		MethodIdx:    0,
@@ -44,10 +46,11 @@ func New() tea.Model {
 		// Modal
 
 		Modal: ModalState{
-			Active: config.ModalNone,
-			Input:  utils.NewModalInput(),
-			List:   []string{},
-			Cursor: 0,
+			Active:          config.ModalNone,
+			Input:           utils.NewModalInput(),
+			SaveAsNameInput: utils.NewModalInput(),
+			List:            []string{},
+			Cursor:          0,
 		},
 		// Collections
 
@@ -68,6 +71,7 @@ func (coreModel Model) Init() tea.Cmd {
 		textinput.Blink,
 		coreModel.Spinner.Tick,
 		TickEvery(),
+		SetupCollection(),
 	)
 }
 
@@ -75,6 +79,16 @@ func TickEvery() tea.Cmd {
 	return tea.Tick(100*time.Millisecond, func(t time.Time) tea.Msg {
 		return TickMsg(t)
 	})
+}
+
+func SetupCollection() tea.Cmd {
+	collections, err := outbound.LoadAllCollections()
+	return func() tea.Msg {
+		if err != nil {
+			return err
+		}
+		return entity.CollectionsLoadedMsg{Collections: collections, Err: err}
+	}
 }
 
 // ── Widget constructors ───────────────────────────────────────

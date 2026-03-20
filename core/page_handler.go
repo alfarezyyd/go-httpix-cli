@@ -1,9 +1,9 @@
 package core
 
 import (
-	"fmt"
 	"go-httpix-cli/config"
 	"go-httpix-cli/entity"
+	"go-httpix-cli/outbound"
 	"go-httpix-cli/utils"
 	"time"
 
@@ -64,7 +64,6 @@ func HandleKey(coreModel Model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if coreModel.CollectionOpen {
 		return handleCollectionKey(coreModel, msg)
 	}
-	fmt.Printf("%q", msg.String())
 	switch {
 	case key.Matches(msg, pressedKey.Quit):
 		return coreModel, tea.Quit
@@ -133,8 +132,16 @@ func HandleKey(coreModel Model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, pressedKey.SaveRequest):
 		coreModel.Modal.Active = config.ModalSaveAs
-		coreModel.Modal.Input.SetValue("")
-		coreModel.Modal.Input.Focus()
+		coreModel.Modal.Cursor = 0
+		coreModel.Modal.ErrMsg = ""
+		coreModel.Modal.SaveAsSelectedID = ""
+		coreModel.Modal.SaveAsInputFocused = true
+
+		// reset dan focus input
+		input := coreModel.Modal.SaveAsNameInput
+		input.SetValue("")
+		input.Focus()
+		coreModel.Modal.SaveAsNameInput = input
 
 		return coreModel, nil
 
@@ -160,12 +167,25 @@ func HandleKey(coreModel Model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return delegateKey(coreModel, msg)
 }
 
-func HandleSaveResult(coreModel Model, msg entity.SaveResultMsg) (tea.Model, tea.Cmd) {
+func HandleSaveResult(m Model, msg entity.SaveResultMsg) (tea.Model, tea.Cmd) {
 	if msg.Err != nil {
-		coreModel.Modal.ErrMsg = "failed to save: " + msg.Err.Error()
-		coreModel.Modal.Active = config.ModalSaveAs // buka lagi modal dengan error
+		m.Modal.ErrMsg = "failed to save: " + msg.Err.Error()
+		m.Modal.Active = config.ModalSaveAs
+		return m, nil
 	}
-	return coreModel, nil
+
+	// reload collections dari disk supaya tree terupdate
+	return m, reloadCollectionsCmd()
+}
+
+func reloadCollectionsCmd() tea.Cmd {
+	return func() tea.Msg {
+		collections, err := outbound.LoadAllCollections()
+		return entity.CollectionsLoadedMsg{
+			Collections: collections,
+			Err:         err,
+		}
+	}
 }
 
 // delegateKey forwards a keystroke to the focused widget.

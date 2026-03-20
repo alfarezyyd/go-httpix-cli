@@ -6,12 +6,19 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 )
 
-type SaveAsModalProps struct {
-	Input       textinput.Model
-	Collections []string // existing collections untuk ditampilkan
-	ErrMsg      string   // kosong = tidak ada error
-}
+// props/modal_props.go
 
+type SaveAsModalProps struct {
+	// input nama request
+	Input textinput.Model
+
+	// tree collection untuk dipilih
+	Tree       []entity.TreeNode
+	Cursor     int    // posisi cursor di tree
+	SelectedID string // ID folder yang dipilih, "" = root
+
+	ErrMsg string
+}
 type EnvPickerModalProps struct {
 	Envs      []entity.Env
 	ActiveIdx int // env yang sedang aktif (diberi tanda)

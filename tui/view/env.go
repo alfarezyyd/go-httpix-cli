@@ -25,7 +25,7 @@ func EnvPage(envPageProps entity.EnvPageProps) string {
 }
 
 func envPageTopBar(width int) string {
-	logo := config.Logo.Render(" ◈ BLINK ")
+	logo := config.Logo.Render(" ◈ httpix_< ")
 	section := config.Version.Render(" Environments ")
 	hint := lipgloss.NewStyle().
 		Foreground(config.Overlay0).Background(config.Mantle).

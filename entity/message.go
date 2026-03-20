@@ -8,3 +8,8 @@ type ResponseMsg struct {
 type SaveResultMsg struct {
 	Err error
 }
+
+type CollectionsLoadedMsg struct {
+	Collections []Collection
+	Err         error
+}

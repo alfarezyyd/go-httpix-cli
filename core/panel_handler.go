@@ -26,36 +26,127 @@ func handleModalKey(coreModel Model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return coreModel, nil
 }
 
-func handleSaveAsKey(coreModel Model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func handleSaveAsKey(m Model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.Modal.SaveAsInputFocused {
+		switch msg.String() {
+		case "tab":
+			m.Modal.SaveAsInputFocused = false
+			input := m.Modal.SaveAsNameInput
+			input.Blur()
+			m.Modal.SaveAsNameInput = input
+			return m, nil
+
+		case "esc":
+			m.Modal.Active = config.ModalNone
+			m.Modal.ErrMsg = ""
+			m.Modal.SaveAsInputFocused = false
+			input := m.Modal.SaveAsNameInput
+			input.Blur()
+			m.Modal.SaveAsNameInput = input
+			return m, nil
+
+		case "ctrl+s":
+			name := strings.TrimSpace(m.Modal.SaveAsNameInput.Value())
+			if name == "" {
+				m.Modal.ErrMsg = "request name cannot be empty"
+				return m, nil
+			}
+			m.Modal.Active = config.ModalNone
+			m.Modal.ErrMsg = ""
+			m.Modal.SaveAsInputFocused = false
+			return m, SaveRequestCmd(m, name, m.Modal.SaveAsSelectedID)
+
+		default:
+			utils.Logger.Println(msg)
+			var cmd tea.Cmd
+			m.Modal.SaveAsNameInput, cmd = m.Modal.SaveAsNameInput.Update(msg)
+			// pastikan focus tetap true setelah Update()
+			input := m.Modal.SaveAsNameInput
+			input.Focus()
+			m.Modal.SaveAsNameInput = input
+			return m, cmd
+		}
+	}
+
+	// ── tree navigation ───────────────────────────────────
+	folderCount := countFolders(m.CollectionTree)
+	totalRows := 1 + folderCount
+
 	switch msg.String() {
 	case "esc":
-		coreModel.Modal.Active = config.ModalNone
-		coreModel.Modal.Input.Blur()
-		return coreModel, nil
+		m.Modal.Active = config.ModalNone
+		m.Modal.ErrMsg = ""
+		m.Modal.SaveAsSelectedID = ""
+		return m, nil
 
-	case "enter":
-		name := strings.TrimSpace(coreModel.Modal.Input.Value())
+	case "up", "k":
+		if m.Modal.Cursor > 0 {
+			m.Modal.Cursor--
+		}
+		return m, nil
+
+	case "down", "j":
+		if m.Modal.Cursor < totalRows-1 {
+			m.Modal.Cursor++
+		}
+		return m, nil
+
+	case "enter", " ":
+		if m.Modal.Cursor == 0 {
+			m.Modal.SaveAsSelectedID = ""
+		} else {
+			folders := filterFolders(m.CollectionTree)
+			if m.Modal.Cursor-1 < len(folders) {
+				m.Modal.SaveAsSelectedID = folders[m.Modal.Cursor-1].ID
+			}
+		}
+		return m, nil
+
+	case "tab":
+		m.Modal.SaveAsInputFocused = true
+		input := m.Modal.SaveAsNameInput
+		input.Focus()
+		m.Modal.SaveAsNameInput = input
+		return m, nil
+
+	case "ctrl+s":
+		name := strings.TrimSpace(m.Modal.SaveAsNameInput.Value())
 		if name == "" {
-			coreModel.Modal.ErrMsg = "collection name cannot be empty"
-			return coreModel, nil // tidak tutup modal, tampilkan error
+			m.Modal.ErrMsg = "request name cannot be empty"
+			m.Modal.SaveAsInputFocused = true
+			input := m.Modal.SaveAsNameInput
+			input.Focus()
+			m.Modal.SaveAsNameInput = input
+			return m, nil
 		}
-
-		if coreModel.URLInput.Value() == "" {
-			coreModel.Modal.ErrMsg = "url input cannot be empty"
-			return coreModel, nil // tidak tutup modal, tampilkan error
-		}
-		coreModel.Modal.Active = config.ModalNone
-		coreModel.Modal.ErrMsg = ""
-		coreModel.Modal.Input.Blur()
-		return coreModel, SaveRequestCmd(coreModel, name)
-
-	default:
-		// clear error saat user mulai mengetik lagi
-		coreModel.Modal.ErrMsg = ""
-		var cmd tea.Cmd
-		coreModel.Modal.Input, cmd = coreModel.Modal.Input.Update(msg)
-		return coreModel, cmd
+		m.Modal.Active = config.ModalNone
+		m.Modal.ErrMsg = ""
+		return m, SaveRequestCmd(m, name, m.Modal.SaveAsSelectedID)
 	}
+
+	return m, nil
+}
+
+// helper — hitung jumlah folder di tree
+func countFolders(nodes []entity.TreeNode) int {
+	count := 0
+	for _, n := range nodes {
+		if n.IsFolder {
+			count++
+		}
+	}
+	return count
+}
+
+// helper — ambil hanya folder dari tree
+func filterFolders(nodes []entity.TreeNode) []entity.TreeNode {
+	var result []entity.TreeNode
+	for _, n := range nodes {
+		if n.IsFolder {
+			result = append(result, n)
+		}
+	}
+	return result
 }
 
 func handleEnvPickerKey(coreModel Model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -94,7 +185,7 @@ func handleEnvPickerKey(coreModel Model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func handleCollectionKey(coreModel Model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	k := coreModel.Keys
+	pressedKey := coreModel.Keys
 	switch msg.String() {
 	case "up", "k":
 		if coreModel.CollectionCursor > 0 {
@@ -106,7 +197,7 @@ func handleCollectionKey(coreModel Model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			coreModel.CollectionCursor++
 		}
 
-	case "enter", " ":
+	case "enter":
 		node := coreModel.CollectionTree[coreModel.CollectionCursor]
 		if node.IsFolder {
 			// toggle expand/collapse
@@ -148,7 +239,21 @@ func handleCollectionKey(coreModel Model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch {
-	case key.Matches(msg, k.OpenPanelCollection):
+	case key.Matches(msg, pressedKey.SaveRequest):
+		node := coreModel.CollectionTree[coreModel.CollectionCursor]
+		coreModel.Modal.RenameID = node.ID
+		utils.Logger.Println(coreModel.Modal.RenameID)
+		utils.Logger.Println(node)
+		newFolder := entity.Collection{
+			ID:       node.ID,
+			Name:     node.Name,
+			Children: []entity.Collection{},
+			Requests: []entity.Request{},
+			Expanded: false,
+		}
+		return coreModel, SaveCollectionCmd(newFolder)
+
+	case key.Matches(msg, pressedKey.OpenPanelCollection):
 		coreModel.CollectionOpen = false
 		coreModel.Focused = config.PanelURL
 	}
@@ -188,7 +293,7 @@ func handleNewFolderKey(coreModel Model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		coreModel.Modal.ErrMsg = ""
 		coreModel.Modal.Input.SetValue("")
 		coreModel.Modal.Input.Blur()
-		return coreModel, SaveCollectionsCmd(newFolder)
+		return coreModel, SaveCollectionCmd(newFolder)
 
 	default:
 		tea.Println("enter ditekan, name:", msg.String())
@@ -225,7 +330,7 @@ func handleRenameKey(coreModel Model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		coreModel.Modal.RenameID = ""
 		coreModel.Modal.Input.SetValue("")
 		coreModel.Modal.Input.Blur()
-		return coreModel, SaveCollectionsCmd(root)
+		return coreModel, SaveCollectionCmd(root)
 
 	default:
 		coreModel.Modal.ErrMsg = ""

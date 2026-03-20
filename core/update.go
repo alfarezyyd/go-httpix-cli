@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
+	"github.com/google/uuid"
 )
 
 // Update is the Elm-architecture update function.
@@ -24,6 +25,13 @@ func (coreModel Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return HandleResponse(coreModel, msg)
 	case entity.SaveResultMsg:
 		return HandleSaveResult(coreModel, msg)
+	case entity.CollectionsLoadedMsg:
+		if msg.Err == nil {
+			coreModel.Collections = msg.Collections
+			coreModel.CollectionTree = utils.Flatten(msg.Collections)
+		}
+		return coreModel, nil
+
 	case tea.KeyMsg:
 		return HandleKey(coreModel, msg)
 	}
@@ -123,10 +131,22 @@ func RenderResponseBody(m Model) string {
 	return m.Response.Body
 }
 
-func SaveRequestCmd(m Model, collectionName string) tea.Cmd {
-	return func() tea.Msg {
+// core/request.go
 
-		return entity.SaveResultMsg{Err: nil}
+func SaveRequestCmd(m Model, name, targetFolderID string) tea.Cmd {
+	req := entity.Request{
+		ID:      uuid.New().String(),
+		Name:    name,
+		Method:  config.HTTPMethods[m.MethodIdx],
+		URL:     m.URLInput.Value(),
+		Headers: m.HeadersInput.Value(),
+		Body:    m.BodyInput.Value(),
+		Params:  m.ParamsInput.Value(),
+	}
+
+	return func() tea.Msg {
+		err := outbound.SaveRequestToCollection(req, targetFolderID)
+		return entity.SaveResultMsg{Err: err}
 	}
 }
 
@@ -233,9 +253,9 @@ func RenameInTree(collections []entity.Collection, id, newName string) []entity.
 	return collections
 }
 
-func SaveCollectionsCmd(collectionEntity entity.Collection) tea.Cmd {
+func SaveCollectionCmd(collectionEntity entity.Collection) tea.Cmd {
 	return func() tea.Msg {
-		err := outbound.SaveFile(collectionEntity.Name, collectionEntity)
+		err := outbound.SaveCollection(collectionEntity.Name, collectionEntity)
 		return entity.SaveResultMsg{
 			Err: err,
 		}
