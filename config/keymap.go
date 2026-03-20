@@ -24,9 +24,8 @@ type KeyMap struct {
 	SaveRequest         key.Binding
 	OpenEnvPicker       key.Binding
 	OpenPanelCollection key.Binding
-	OpenEnvPage         key.Binding
 
-	// Human-readable labels shown in the status bar / top bar.
+	// Human-readable labels shown in the status bar / top bar
 	LabelSend         string
 	LabelFocus        string
 	LabelMethod       string
@@ -34,6 +33,9 @@ type KeyMap struct {
 	LabelFormatJSON   string
 	LabelQuit         string
 	LabelClearHistory string
+	LabelSaveRequest  string
+	LabelEnv          string
+	LabelCollections  string
 }
 
 // DefaultKeyMap returns a KeyMap tuned for the current OS.
@@ -55,11 +57,12 @@ func DefaultKeyMap() KeyMap {
 
 func macKeyMap() KeyMap {
 	return KeyMap{
+		// bindings
 		Send:                key.NewBinding(key.WithKeys("ctrl+s", "f5"), key.WithHelp("⌃S/F5", "send")),
 		NextPanel:           key.NewBinding(key.WithKeys("tab"), key.WithHelp("⇥", "next panel")),
 		PrevPanel:           key.NewBinding(key.WithKeys("shift+tab"), key.WithHelp("⇧⇥", "prev panel")),
-		NextMethod:          key.NewBinding(key.WithKeys("alt+f"), key.WithHelp("⌥→", "method +")),
-		PrevMethod:          key.NewBinding(key.WithKeys("alt+b"), key.WithHelp("⌥←", "method -")),
+		NextMethod:          key.NewBinding(key.WithKeys("alt+right"), key.WithHelp("⌥→", "method +")),
+		PrevMethod:          key.NewBinding(key.WithKeys("alt+left"), key.WithHelp("⌥←", "method -")),
 		NextTab:             key.NewBinding(key.WithKeys("alt+]"), key.WithHelp("⌥]", "tab +")),
 		PrevTab:             key.NewBinding(key.WithKeys("alt+["), key.WithHelp("⌥[", "tab -")),
 		HistoryUp:           key.NewBinding(key.WithKeys("up"), key.WithHelp("↑", "history up")),
@@ -67,33 +70,52 @@ func macKeyMap() KeyMap {
 		Quit:                key.NewBinding(key.WithKeys("ctrl+c", "ctrl+q"), key.WithHelp("⌃C", "quit")),
 		FormatJSON:          key.NewBinding(key.WithKeys("ctrl+f"), key.WithHelp("⌃F", "format JSON")),
 		ClearHistory:        key.NewBinding(key.WithKeys("ctrl+k"), key.WithHelp("⌃K", "clear history")),
-		SaveRequest:         key.NewBinding(key.WithKeys("alt+ctrl+s"), key.WithHelp("⌥⌃S", "save request")),
-		OpenEnvPicker:       key.NewBinding(key.WithKeys("ctrl+x"), key.WithHelp("⌃X", "open env picker")),
-		OpenPanelCollection: key.NewBinding(key.WithKeys("ctrl+a"), key.WithHelp("⌃A", "open panel collections")),
-		OpenEnvPage:         key.NewBinding(key.WithKeys("alt+ctrl+k"), key.WithHelp("⌥⌃[", "open env page")),
-		LabelSend:           "⌃S / F5", LabelFocus: "⇥ Tab", LabelMethod: "⌥ ←/→",
-		LabelTab: "⌥ [/]", LabelFormatJSON: "⌃F", LabelQuit: "⌃C", LabelClearHistory: "⌃K",
+		SaveRequest:         key.NewBinding(key.WithKeys("ctrl+w"), key.WithHelp("⌃W", "save request")),
+		OpenEnvPicker:       key.NewBinding(key.WithKeys("ctrl+e"), key.WithHelp("⌃E", "environments")),
+		OpenPanelCollection: key.NewBinding(key.WithKeys("ctrl+b"), key.WithHelp("⌃B", "collections")),
+
+		// labels
+		LabelSend:         "⌃S",
+		LabelFocus:        "⇥ Tab",
+		LabelMethod:       "⌥ ←/→",
+		LabelTab:          "⌥ [/]",
+		LabelFormatJSON:   "⌃F",
+		LabelQuit:         "⌃C",
+		LabelClearHistory: "⌃K",
+		LabelSaveRequest:  "⌃W",
+		LabelEnv:          "⌃E",
+		LabelCollections:  "⌃B",
 	}
 }
-
 func linuxKeyMap() KeyMap {
 	return KeyMap{
-		Send:          key.NewBinding(key.WithKeys("ctrl+enter", "f5"), key.WithHelp("ctrl+↵/F5", "send")),
-		NextPanel:     key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next panel")),
-		PrevPanel:     key.NewBinding(key.WithKeys("shift+tab"), key.WithHelp("⇧tab", "prev panel")),
-		NextMethod:    key.NewBinding(key.WithKeys("ctrl+right", "ctrl+l"), key.WithHelp("ctrl+→", "method +")),
-		PrevMethod:    key.NewBinding(key.WithKeys("ctrl+left"), key.WithHelp("ctrl+←", "method -")),
-		NextTab:       key.NewBinding(key.WithKeys("ctrl+]"), key.WithHelp("ctrl+]", "tab +")),
-		PrevTab:       key.NewBinding(key.WithKeys("ctrl+["), key.WithHelp("ctrl+[", "tab -")),
-		HistoryUp:     key.NewBinding(key.WithKeys("up"), key.WithHelp("↑", "history up")),
-		HistoryDown:   key.NewBinding(key.WithKeys("down"), key.WithHelp("↓", "history down")),
-		Quit:          key.NewBinding(key.WithKeys("ctrl+c", "ctrl+q"), key.WithHelp("ctrl+c", "quit")),
-		FormatJSON:    key.NewBinding(key.WithKeys("ctrl+f"), key.WithHelp("ctrl+f", "format JSON")),
-		ClearHistory:  key.NewBinding(key.WithKeys("ctrl+d"), key.WithHelp("ctrl+d", "clear history")),
-		SaveRequest:   key.NewBinding(key.WithKeys("alt+ctrl+s"), key.WithHelp("⌥⌃S", "save request")),
-		OpenEnvPicker: key.NewBinding(key.WithKeys("ctrl+x"), key.WithHelp("⌃X", "open env picker")),
+		// bindings
+		Send:                key.NewBinding(key.WithKeys("ctrl+enter", "f5"), key.WithHelp("ctrl+↵", "send")),
+		NextPanel:           key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next panel")),
+		PrevPanel:           key.NewBinding(key.WithKeys("shift+tab"), key.WithHelp("⇧tab", "prev panel")),
+		NextMethod:          key.NewBinding(key.WithKeys("ctrl+right"), key.WithHelp("ctrl+→", "method +")),
+		PrevMethod:          key.NewBinding(key.WithKeys("ctrl+left"), key.WithHelp("ctrl+←", "method -")),
+		NextTab:             key.NewBinding(key.WithKeys("ctrl+]"), key.WithHelp("ctrl+]", "tab +")),
+		PrevTab:             key.NewBinding(key.WithKeys("ctrl+["), key.WithHelp("ctrl+[", "tab -")),
+		HistoryUp:           key.NewBinding(key.WithKeys("up"), key.WithHelp("↑", "history up")),
+		HistoryDown:         key.NewBinding(key.WithKeys("down"), key.WithHelp("↓", "history down")),
+		Quit:                key.NewBinding(key.WithKeys("ctrl+c", "ctrl+q"), key.WithHelp("ctrl+c", "quit")),
+		FormatJSON:          key.NewBinding(key.WithKeys("ctrl+f"), key.WithHelp("ctrl+f", "format JSON")),
+		ClearHistory:        key.NewBinding(key.WithKeys("ctrl+k"), key.WithHelp("ctrl+k", "clear history")),
+		SaveRequest:         key.NewBinding(key.WithKeys("ctrl+w"), key.WithHelp("ctrl+w", "save request")),
+		OpenEnvPicker:       key.NewBinding(key.WithKeys("ctrl+e"), key.WithHelp("ctrl+e", "environments")),
+		OpenPanelCollection: key.NewBinding(key.WithKeys("ctrl+b"), key.WithHelp("ctrl+b", "collections")),
 
-		LabelSend: "ctrl+↵ / F5", LabelFocus: "Tab", LabelMethod: "ctrl+←/→",
-		LabelTab: "ctrl+[/]", LabelFormatJSON: "ctrl+f", LabelQuit: "ctrl+c", LabelClearHistory: "ctrl+d",
+		// labels
+		LabelSend:         "ctrl+↵",
+		LabelFocus:        "Tab",
+		LabelMethod:       "ctrl+←/→",
+		LabelTab:          "ctrl+[/]",
+		LabelFormatJSON:   "ctrl+f",
+		LabelQuit:         "ctrl+c",
+		LabelClearHistory: "ctrl+k",
+		LabelSaveRequest:  "ctrl+w",
+		LabelEnv:          "ctrl+e",
+		LabelCollections:  "ctrl+b",
 	}
 }

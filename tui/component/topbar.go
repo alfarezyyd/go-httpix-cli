@@ -48,10 +48,3 @@ func TopBar(p TopBarProps) string {
 
 	return config.TopBar.Width(p.Width).Render(left + gap + right)
 }
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}

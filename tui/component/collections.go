@@ -2,7 +2,7 @@ package component
 
 import (
 	"go-httpix-cli/config"
-	"go-httpix-cli/tui/collection"
+	"go-httpix-cli/entity"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -12,7 +12,7 @@ type CollectionPanelProps struct {
 	Width   int
 	Height  int
 	Focused bool
-	Nodes   []collection.TreeNode
+	Nodes   []entity.TreeNode
 	Cursor  int
 }
 

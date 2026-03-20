@@ -3,8 +3,7 @@ package component
 import (
 	"fmt"
 	"go-httpix-cli/config"
-	"go-httpix-cli/core"
-	"net/http"
+	"go-httpix-cli/entity"
 	"strings"
 	"time"
 
@@ -20,7 +19,7 @@ type ResponsePanelProps struct {
 	Focused  bool
 	Loading  bool
 	ErrMsg   string
-	Response *core.Response
+	Response *entity.Response
 	VP       viewport.Model
 	Spinner  spinner.Model
 	SendKey  string // platform-specific send shortcut label
@@ -64,12 +63,12 @@ func responseContent(p ResponsePanelProps) string {
 	r := p.Response
 
 	// ── Status badge ─────────────────────────────────────────
-	statusStr := fmt.Sprintf("  %d %s  ", r.Status, http.StatusText(r.Status))
+	statusStr := fmt.Sprintf("  %d %s  ", r.StatusCode, r.Status)
 	var badge string
 	switch {
-	case r.Status >= 400:
+	case r.StatusCode >= 400:
 		badge = config.StatusErr.Render(statusStr)
-	case r.Status >= 300:
+	case r.StatusCode >= 300:
 		badge = config.StatusRedir.Render(statusStr)
 	default:
 		badge = config.StatusOK.Render(statusStr)

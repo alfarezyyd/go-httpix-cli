@@ -4,12 +4,17 @@ package config
 type Panel int
 type ModalType int
 type Page int
+type EnvPageFocus int
 
 const (
 	PageMain Page = iota
 	PageEnv       // ← full page env manager
 )
 
+const (
+	EnvFocusList EnvPageFocus = iota
+	EnvFocusTable
+)
 const (
 	PanelURL Panel = iota
 	PanelBody
@@ -37,3 +42,10 @@ const (
 	ModalNewFolder
 	ModalRename
 )
+
+var PanelOrder = []Panel{
+	PanelURL,
+	PanelBody,
+	PanelResponse,
+	PanelHistory,
+}

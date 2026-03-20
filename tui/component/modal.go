@@ -1,21 +1,13 @@
-// tui/component/modal.go
 package component
 
 import (
 	"go-httpix-cli/config"
+	"go-httpix-cli/tui/props"
 
-	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/lipgloss"
 )
 
-type SaveAsModalProps struct {
-	Input       textinput.Model
-	Collections []string // existing collections untuk ditampilkan
-	ErrMsg      string   // kosong = tidak ada error
-
-}
-
-func SaveAsModal(p SaveAsModalProps) string {
+func SaveAsModal(p props.SaveAsModalProps) string {
 	title := lipgloss.NewStyle().
 		Foreground(config.Mauve).Bold(true).
 		Render("  Save Request  ")
@@ -56,14 +48,7 @@ func SaveAsModal(p SaveAsModalProps) string {
 		Render(inner)
 }
 
-type EnvPickerModalProps struct {
-	Envs      []string
-	ActiveIdx int // env yang sedang aktif (diberi tanda)
-	Cursor    int // posisi highlight saat ini
-	ErrMsg    string
-}
-
-func EnvPickerModal(p EnvPickerModalProps) string {
+func EnvPickerModal(p props.EnvPickerModalProps) string {
 	title := lipgloss.NewStyle().
 		Foreground(config.Mauve).Bold(true).
 		Render("  Switch Environment  ")
@@ -77,14 +62,14 @@ func EnvPickerModal(p EnvPickerModalProps) string {
 	}
 
 	var rows []string
-	for i, name := range p.Envs {
+	for i, env := range p.Envs {
 		// tanda bahwa ini env aktif
 		active := "  "
 		if i == p.ActiveIdx {
 			active = "● "
 		}
 
-		row := active + name
+		row := active + env.Name
 
 		if i == p.Cursor {
 			rows = append(rows, lipgloss.NewStyle().
@@ -124,12 +109,7 @@ func EnvPickerModal(p EnvPickerModalProps) string {
 
 // ── New Folder Modal ─────────────────────────────────────────
 
-type NewFolderModalProps struct {
-	Input  textinput.Model
-	ErrMsg string
-}
-
-func NewFolderModal(p NewFolderModalProps) string {
+func NewFolderModal(p props.NewFolderModalProps) string {
 	title := lipgloss.NewStyle().
 		Foreground(config.Mauve).Bold(true).
 		Render("  New Collection Folder  ")
@@ -172,13 +152,7 @@ func NewFolderModal(p NewFolderModalProps) string {
 
 // ── Rename Modal ─────────────────────────────────────────────
 
-type RenameModalProps struct {
-	Input      textinput.Model
-	TargetName string // nama lama — ditampilkan sebagai konteks
-	ErrMsg     string
-}
-
-func RenameModal(p RenameModalProps) string {
+func RenameModal(p props.RenameModalProps) string {
 	title := lipgloss.NewStyle().
 		Foreground(config.Mauve).Bold(true).
 		Render("  Rename  ")

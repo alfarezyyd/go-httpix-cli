@@ -1,9 +1,9 @@
-package core
+package outbound
 
 import (
 	"encoding/json"
 	"fmt"
-	"go-httpix-cli/tui/collection"
+	"go-httpix-cli/entity"
 	"os"
 	"path/filepath"
 )
@@ -20,7 +20,7 @@ func baseDir() (string, error) {
 	return dir, nil
 }
 
-func SaveFile(collectionName string, collection collection.Collection) error {
+func SaveFile(collectionName string, collection entity.Collection) error {
 	dir, err := baseDir()
 	if err != nil {
 		return err

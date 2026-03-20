@@ -20,12 +20,16 @@ func StatusBar(p StatusBarProps) string {
 		Foreground(config.Crust).Background(config.Lavender).Bold(true).Padding(0, 1).
 		Render("  " + p.FocusLabel + " ")
 
+	// tui/component/statusbar.go
 	hints := []struct{ key, desc string }{
 		{p.Keys.LabelSend, "Send"},
 		{p.Keys.LabelFocus, "Focus"},
 		{p.Keys.LabelMethod, "Method"},
 		{p.Keys.LabelTab, "Tab"},
-		{p.Keys.LabelFormatJSON, "Format JSON"},
+		{p.Keys.LabelFormatJSON, "Format"},
+		{p.Keys.LabelSaveRequest, "Save"},
+		{p.Keys.LabelCollections, "Collections"},
+		{p.Keys.LabelEnv, "Env"},
 		{p.Keys.LabelQuit, "Quit"},
 	}
 

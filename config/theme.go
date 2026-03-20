@@ -105,3 +105,6 @@ var (
 	HistoryItem   = lipgloss.NewStyle().Foreground(Subtext1).Background(Mantle).Padding(0, 1)
 	HistoryActive = lipgloss.NewStyle().Foreground(Crust).Background(Mauve).Bold(true).Padding(0, 1)
 )
+
+// Sidebar Width
+const SidebarWidth = 28

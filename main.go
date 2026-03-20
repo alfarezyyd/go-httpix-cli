@@ -2,7 +2,8 @@ package main
 
 import (
 	"fmt"
-	"go-httpix-cli/tui"
+	"go-httpix-cli/core"
+	"go-httpix-cli/outbound"
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -12,13 +13,17 @@ import (
 func main() {
 	req.DevMode()
 
-	p := tea.NewProgram(
-		tui.New(),
+	tuiProgram := tea.NewProgram(
+		core.New(),
 		tea.WithAltScreen(),
 		tea.WithMouseCellMotion(),
 	)
-	if _, err := p.Run(); err != nil {
-		fmt.Fprintln(os.Stderr, "Error:", err)
+	outbound.Setup()
+	if _, err := tuiProgram.Run(); err != nil {
+		_, err = fmt.Fprintln(os.Stderr, "Error:", err)
+		if err != nil {
+			panic(err)
+		}
 		os.Exit(1)
 	}
 }

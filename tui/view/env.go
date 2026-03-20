@@ -1,47 +1,26 @@
-package component
+package view
 
 import (
 	"go-httpix-cli/config"
+	"go-httpix-cli/entity"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 )
 
-type EnvRow struct {
-	KeyView   string // hasil dari textinput.View()
-	ValueView string
-	KeyVal    string // nilai aktual untuk display mode
-	ValueVal  string
-	Editing   bool // apakah row ini sedang diedit
-}
-type EnvPageProps struct {
-	Width       int
-	Height      int
-	Envs        []string // hanya nama, untuk list panel
-	ListCursor  int
-	ActiveIdx   int
-	ListFocused bool
-
-	EnvName      string // nama env yang sedang dibuka di table
-	Rows         []EnvRow
-	RowCursor    int
-	TableFocused bool
-	Editing      bool
-}
-
-func EnvPage(p EnvPageProps) string {
+func EnvPage(envPageProps entity.EnvPageProps) string {
 	listW := 28
-	tableW := p.Width - listW - 3
+	tableW := envPageProps.Width - listW - 3
 
-	left := envListPanel(p, listW)
-	right := envTablePanel(p, tableW)
+	left := envListPanel(envPageProps, listW)
+	right := envTablePanel(envPageProps, tableW)
 
 	body := lipgloss.JoinHorizontal(lipgloss.Top, left, " ", right)
 
 	return lipgloss.JoinVertical(lipgloss.Left,
-		envPageTopBar(p.Width),
+		envPageTopBar(envPageProps.Width),
 		body,
-		envPageStatusBar(p),
+		envPageStatusBar(envPageProps),
 	)
 }
 
@@ -56,19 +35,19 @@ func envPageTopBar(width int) string {
 	return config.TopBar.Width(width).Render(logo + section + gap + hint)
 }
 
-func envListPanel(p EnvPageProps, w int) string {
+func envListPanel(envPageProps entity.EnvPageProps, w int) string {
 	title := config.PanelTitleStyle.Render("◈ Environments")
 
 	var rows []string
-	for i, env := range p.Envs {
+	for i, env := range envPageProps.Envs {
 		// tanda aktif
 		prefix := "  "
-		if i == p.ActiveIdx {
+		if i == envPageProps.ActiveIdx {
 			prefix = "● "
 		}
 		line := prefix + env
 
-		if i == p.ListCursor {
+		if i == envPageProps.ListCursor {
 			rows = append(rows, lipgloss.NewStyle().
 				Foreground(config.Crust).Background(config.Mauve).
 				Width(w-4).Render(line))
@@ -86,18 +65,18 @@ func envListPanel(p EnvPageProps, w int) string {
 	)
 
 	ps := config.PanelStyle
-	if p.ListFocused {
+	if envPageProps.ListFocused {
 		ps = config.PanelFocusedStyle
 	}
 
-	return ps.Width(w).Height(p.Height-4).Padding(0, 1).
+	return ps.Width(w).Height(envPageProps.Height-4).Padding(0, 1).
 		Render(lipgloss.JoinVertical(lipgloss.Left, title, content))
 }
 
-func envTablePanel(p EnvPageProps, w int) string {
+func envTablePanel(envPageProps entity.EnvPageProps, w int) string {
 	envName := ""
-	if len(p.Envs) > 0 && p.ListCursor < len(p.Envs) {
-		envName = p.Envs[p.ListCursor]
+	if len(envPageProps.Envs) > 0 && envPageProps.ListCursor < len(envPageProps.Envs) {
+		envName = envPageProps.Envs[envPageProps.ListCursor]
 	}
 
 	title := config.PanelTitleStyle.Render("◈ " + envName)
@@ -113,9 +92,9 @@ func envTablePanel(p EnvPageProps, w int) string {
 
 	// rows
 	var rows []string
-	for i, row := range p.Rows {
+	for i, row := range envPageProps.Rows {
 		var line string
-		if p.Editing && i == p.RowCursor {
+		if envPageProps.Editing && i == envPageProps.RowCursor {
 			// mode edit — tampilkan textinput
 			line = lipgloss.JoinHorizontal(lipgloss.Left,
 				lipgloss.NewStyle().Width(keyW).Render("  "+row.KeyView),
@@ -137,7 +116,7 @@ func envTablePanel(p EnvPageProps, w int) string {
 			)
 		}
 
-		if i == p.RowCursor && !p.Editing {
+		if i == envPageProps.RowCursor && !envPageProps.Editing {
 			rows = append(rows, lipgloss.NewStyle().
 				Background(config.Surface0).Width(w-4).Render(line))
 		} else {
@@ -155,20 +134,20 @@ func envTablePanel(p EnvPageProps, w int) string {
 	)
 
 	ps := config.PanelStyle
-	if p.TableFocused {
+	if envPageProps.TableFocused {
 		ps = config.PanelFocusedStyle
 	}
 
-	return ps.Width(w).Height(p.Height-4).Padding(0, 1).
+	return ps.Width(w).Height(envPageProps.Height-4).Padding(0, 1).
 		Render(lipgloss.JoinVertical(lipgloss.Left, title, content))
 }
 
-func envPageStatusBar(p EnvPageProps) string {
+func envPageStatusBar(envPageProps entity.EnvPageProps) string {
 	// status bar sederhana khusus env page
 	focus := "Env List"
-	if p.TableFocused {
+	if envPageProps.TableFocused {
 		focus = "Variables"
-		if p.Editing {
+		if envPageProps.Editing {
 			focus = "Editing"
 		}
 	}
@@ -182,6 +161,6 @@ func envPageStatusBar(p EnvPageProps) string {
 		Render("  Tab switch panel   ↑↓ navigate   ↵ select/edit   n new   d delete   esc back  ")
 
 	return lipgloss.NewStyle().
-		Background(config.Crust).Width(p.Width).Padding(0, 1).
+		Background(config.Crust).Width(envPageProps.Width).Padding(0, 1).
 		Render(lipgloss.JoinHorizontal(lipgloss.Center, indicator, hints))
 }

@@ -1,4 +1,4 @@
-package tui
+package utils
 
 import (
 	"encoding/json"
@@ -6,7 +6,7 @@ import (
 )
 
 // tryPrettyJSON parses s as JSON and returns indented form + true on success.
-func tryPrettyJSON(s string) (string, bool) {
+func TryPrettyJSON(s string) (string, bool) {
 	s = strings.TrimSpace(s)
 	if s == "" {
 		return "", false
@@ -23,7 +23,7 @@ func tryPrettyJSON(s string) (string, bool) {
 }
 
 // prettyJSON returns indented JSON or "" if s is invalid JSON.
-func prettyJSON(s string) string {
-	out, _ := tryPrettyJSON(s)
+func PrettyJSON(s string) string {
+	out, _ := TryPrettyJSON(s)
 	return out
 }
